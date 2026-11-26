@@ -1,5 +1,45 @@
 {
   "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Owner-only authoritative user profile stored in users/{uid} with protected level, XP, and win/loss stats.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Firebase Auth UID." },
+        "displayName": { "type": "string", "description": "Player display name (1-40 chars)." },
+        "avatarUrl": { "type": "string", "description": "Avatar URL or preset asset path." },
+        "playerCode": { "type": "string", "description": "Unique shareable Player ID (6-16 chars)." },
+        "level": { "type": "integer", "description": "Player level derived strictly from XP." },
+        "xp": { "type": "integer", "description": "Player experience / ranking points (0-100000)." },
+        "rankTier": { "type": "string", "description": "Arabic rank tier title." },
+        "wins": { "type": "integer", "description": "Total matches won." },
+        "losses": { "type": "integer", "description": "Total matches lost." },
+        "matchesPlayed": { "type": "integer", "description": "Total completed matches." },
+        "streak": { "type": "integer", "description": "Current win streak." },
+        "lossStreak": { "type": "integer", "description": "Current loss streak." },
+        "totalPoints": { "type": "integer", "description": "Cumulative Baloot points scored." },
+        "lastMatchId": { "type": "string", "description": "Document ID of the most recent match in users/{uid}/matches." },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId",
+        "displayName",
+        "playerCode",
+        "level",
+        "xp",
+        "rankTier",
+        "wins",
+        "losses",
+        "matchesPlayed",
+        "streak",
+        "lossStreak",
+        "totalPoints",
+        "lastMatchId",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
     "PlayerProfile": {
       "title": "PlayerProfile",
       "description": "Public player profile, Elo ranking, Player ID, and online presence status (zero PII).",
@@ -175,9 +215,36 @@
         "opponentSummary",
         "createdAt"
       ]
+    },
+    "UserSettings": {
+      "title": "UserSettings",
+      "description": "User-scoped table background preferences, store unlocks, subscription plan, and daily online room quota.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "selectedTableBg": { "type": "string", "enum": ["classic_white", "classic_green", "saudi_gold", "saudi_royal_dark_gold", "saudi_green"] },
+        "ownedTableBgs": { "type": "array", "description": "List of unlocked table background IDs (max 5)." },
+        "subscriptionPlan": { "type": "string", "enum": ["none", "weekly", "monthly", "yearly"] },
+        "dailySessionsDate": { "type": "string", "description": "YYYY-MM-DD UTC/local date string for daily online room quota." },
+        "dailySessionsCount": { "type": "integer", "description": "Number of online rooms created on dailySessionsDate." },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId",
+        "selectedTableBg",
+        "ownedTableBgs",
+        "subscriptionPlan",
+        "dailySessionsDate",
+        "dailySessionsCount",
+        "updatedAt"
+      ]
     }
   },
   "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Private owner-only user profile documents keyed by Firebase Auth UID."
+    },
     "/players/{userId}": {
       "schema": { "$ref": "#/entities/PlayerProfile" },
       "description": "Public player profiles, Player IDs, presence status, and rankings."
@@ -197,6 +264,10 @@
     "/users/{userId}/matches/{matchId}": {
       "schema": { "$ref": "#/entities/MatchRecord" },
       "description": "User-scoped immutable match history records."
+    },
+    "/users/{userId}/settings/{settingId}": {
+      "schema": { "$ref": "#/entities/UserSettings" },
+      "description": "User-scoped preferences, unlocked table backgrounds, subscription state, and daily room creation quota."
     }
   }
 }

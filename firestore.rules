@@ -50,6 +50,26 @@ service cloud.firestore {
              data.updatedAt is timestamp && data.updatedAt <= request.time;
     }
 
+    function isValidUserProfile(data, ownerUid) {
+      return data.userId is string && data.userId == ownerUid && data.userId.size() <= 128 &&
+             data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 40 &&
+             (!('avatarUrl' in data) || data.avatarUrl == null || (data.avatarUrl is string && data.avatarUrl.size() <= 500)) &&
+             data.playerCode is string && data.playerCode.size() >= 6 && data.playerCode.size() <= 16 && data.playerCode.matches('^[A-Z0-9]+$') &&
+             data.level is int && data.level >= 1 && data.level <= 1001 &&
+             data.xp is int && data.xp >= 0 && data.xp <= 100000 &&
+             (data.level - 1) * 100 <= data.xp && data.xp < data.level * 100 &&
+             data.rankTier is string && data.rankTier.size() >= 1 && data.rankTier.size() <= 30 &&
+             data.wins is int && data.wins >= 0 && data.wins <= 100000 &&
+             data.losses is int && data.losses >= 0 && data.losses <= 100000 &&
+             data.matchesPlayed is int && data.matchesPlayed == data.wins + data.losses && data.matchesPlayed <= 200000 &&
+             data.streak is int && data.streak >= 0 && data.streak <= 10000 &&
+             data.lossStreak is int && data.lossStreak >= 0 && data.lossStreak <= 10000 &&
+             data.totalPoints is int && data.totalPoints >= 0 && data.totalPoints <= 100000000 &&
+             data.lastMatchId is string && data.lastMatchId.size() <= 128 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
     function isValidFriend(data, ownerUid, friendUid) {
       return data.userId is string && data.userId == ownerUid &&
              data.friendUid is string && data.friendUid == friendUid && data.friendUid != ownerUid &&
@@ -122,7 +142,13 @@ service cloud.firestore {
              data.usProjects is list && data.usProjects.size() <= 8 &&
              data.themProjects is list && data.themProjects.size() <= 8 &&
              data.winnerTeam is int && data.winnerTeam >= -1 && data.winnerTeam <= 1 &&
-             data.lastActionText is string && data.lastActionText.size() <= 140;
+             data.lastActionText is string && data.lastActionText.size() <= 140 &&
+             (!('biddingPasses' in data) || (data.biddingPasses is int && data.biddingPasses >= 0 && data.biddingPasses <= 8)) &&
+             (!('highestBidSeat' in data) || (data.highestBidSeat is int && data.highestBidSeat >= -1 && data.highestBidSeat <= 3)) &&
+             (!('highestBidMode' in data) || data.highestBidMode in ['none', 'sun', 'hokm']) &&
+             (!('highestBidSuit' in data) || data.highestBidSuit in ['none', 'spades', 'hearts', 'diamonds', 'clubs']) &&
+             (!('standbySeats' in data) || (data.standbySeats is list && data.standbySeats.size() <= 4)) &&
+             (!('declaredProjectSeats' in data) || (data.declaredProjectSeats is list && data.declaredProjectSeats.size() <= 4));
     }
 
     function isValidRoom(data) {
@@ -139,6 +165,17 @@ service cloud.firestore {
              data.ratingDelta is int && data.ratingDelta >= -500 && data.ratingDelta <= 80 &&
              data.opponentSummary is string && data.opponentSummary.size() <= 120 &&
              data.createdAt is timestamp && data.createdAt <= request.time;
+    }
+
+    function isValidUserSettings(data, ownerUid) {
+      return data.userId is string && data.userId == ownerUid && data.userId.size() <= 128 &&
+             data.selectedTableBg in ['classic_white', 'classic_green', 'saudi_gold', 'saudi_royal_dark_gold', 'saudi_green'] &&
+             data.ownedTableBgs is list && data.ownedTableBgs.size() >= 1 && data.ownedTableBgs.size() <= 5 &&
+             data.ownedTableBgs.hasOnly(['classic_white', 'classic_green', 'saudi_gold', 'saudi_royal_dark_gold', 'saudi_green']) &&
+             data.subscriptionPlan in ['none', 'weekly', 'monthly', 'yearly'] &&
+             data.dailySessionsDate is string && data.dailySessionsDate.size() == 10 && data.dailySessionsDate.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$') &&
+             data.dailySessionsCount is int && data.dailySessionsCount >= 0 && data.dailySessionsCount <= 500 &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
     }
 
     // --- Collection: players/{userId} ---
@@ -242,6 +279,8 @@ service cloud.firestore {
                          'openCard', 'hands', 'tableCards', 'lastTrickCards', 'lastTrickWinner',
                          'usTricksCount', 'themTricksCount', 'usRoundPoints', 'themRoundPoints',
                          'usProjects', 'themProjects', 'winnerTeam', 'lastActionText',
+                         'biddingPasses', 'highestBidSeat', 'highestBidMode', 'highestBidSuit',
+                         'standbySeats', 'declaredProjectSeats',
                          'createdAt', 'updatedAt'
                        ]) &&
                        isValidRoom(incoming());
@@ -295,7 +334,9 @@ service cloud.firestore {
                              'gamePhase', 'gameMode', 'trumpSuit', 'bidderIndex', 'bidLevel',
                              'openCard', 'hands', 'tableCards', 'lastTrickCards', 'lastTrickWinner',
                              'usTricksCount', 'themTricksCount', 'usRoundPoints', 'themRoundPoints',
-                             'usProjects', 'themProjects', 'winnerTeam', 'lastActionText', 'updatedAt'
+                             'usProjects', 'themProjects', 'winnerTeam', 'lastActionText',
+                             'biddingPasses', 'highestBidSeat', 'highestBidMode', 'highestBidSuit',
+                             'standbySeats', 'declaredProjectSeats', 'updatedAt'
                            ])
                          )
                        );
@@ -375,6 +416,82 @@ service cloud.firestore {
                        (request.auth.uid == existing().fromUid || request.auth.uid == existing().toUid);
     }
 
+    // --- Collection: users/{userId} (Owner-only authoritative profile & tamper-resistant stats) ---
+    match /users/{userId} {
+      allow get: if isOwner(userId) && isValidId(userId);
+      allow list: if false;
+
+      allow create: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       incoming().keys().hasAll([
+                         'userId', 'displayName', 'playerCode', 'level', 'xp', 'rankTier',
+                         'wins', 'losses', 'matchesPlayed', 'streak', 'lossStreak',
+                         'totalPoints', 'lastMatchId', 'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'userId', 'displayName', 'avatarUrl', 'playerCode', 'level', 'xp', 'rankTier',
+                         'wins', 'losses', 'matchesPlayed', 'streak', 'lossStreak',
+                         'totalPoints', 'lastMatchId', 'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().level == 1 &&
+                       incoming().xp == 22 &&
+                       incoming().wins == 0 &&
+                       incoming().losses == 0 &&
+                       incoming().matchesPlayed == 0 &&
+                       incoming().streak == 0 &&
+                       incoming().lossStreak == 0 &&
+                       incoming().totalPoints == 0 &&
+                       incoming().lastMatchId == '' &&
+                       incoming().createdAt == request.time &&
+                       incoming().updatedAt == request.time &&
+                       isValidUserProfile(incoming(), userId);
+
+      allow update: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       isValidUserProfile(incoming(), userId) &&
+                       incoming().userId == existing().userId &&
+                       incoming().playerCode == existing().playerCode &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().updatedAt == request.time &&
+                       (
+                         // Action 1: User edits only displayName & avatarUrl (stats strictly locked)
+                         incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'avatarUrl', 'updatedAt']) ||
+                         // Action 2: Trusted atomic match completion stats update (must pair with a newly created match record in the same batch)
+                         (
+                           incoming().diff(existing()).affectedKeys().hasOnly([
+                             'level', 'xp', 'rankTier', 'wins', 'losses', 'matchesPlayed',
+                             'streak', 'lossStreak', 'totalPoints', 'lastMatchId', 'updatedAt'
+                           ]) &&
+                           incoming().matchesPlayed == existing().matchesPlayed + 1 &&
+                           (
+                             (
+                               incoming().wins == existing().wins + 1 &&
+                               incoming().losses == existing().losses &&
+                               incoming().streak == existing().streak + 1 &&
+                               incoming().lossStreak == 0
+                             ) ||
+                             (
+                               incoming().losses == existing().losses + 1 &&
+                               incoming().wins == existing().wins &&
+                               incoming().streak == 0 &&
+                               incoming().lossStreak == existing().lossStreak + 1
+                             )
+                           ) &&
+                           incoming().totalPoints >= existing().totalPoints &&
+                           incoming().totalPoints <= existing().totalPoints + 500 &&
+                           incoming().xp >= existing().xp - 500 &&
+                           incoming().xp <= existing().xp + 80 &&
+                           isValidId(incoming().lastMatchId) &&
+                           incoming().lastMatchId != existing().lastMatchId &&
+                           !exists(/databases/$(database)/documents/users/$(userId)/matches/$(incoming().lastMatchId)) &&
+                           existsAfter(/databases/$(database)/documents/users/$(userId)/matches/$(incoming().lastMatchId)) &&
+                           getAfter(/databases/$(database)/documents/users/$(userId)/matches/$(incoming().lastMatchId)).data.didWin == (incoming().wins == existing().wins + 1)
+                         )
+                       );
+
+      allow delete: if false;
+    }
+
     // --- Collection: users/{userId}/friends/{friendUid} ---
     match /users/{userId}/friends/{friendUid} {
       allow get: if isOwner(userId) && isValidId(friendUid);
@@ -413,6 +530,35 @@ service cloud.firestore {
                        isValidMatchHistory(incoming());
 
       allow update, delete: if false;
+    }
+
+    // --- Collection: users/{userId}/settings/{settingId} ---
+    match /users/{userId}/settings/{settingId} {
+      allow get: if isOwner(userId) && isValidId(settingId);
+      allow list: if isOwner(userId);
+
+      allow create: if isOwner(userId) &&
+                       isValidId(settingId) &&
+                       incoming().keys().hasAll([
+                         'userId', 'selectedTableBg', 'ownedTableBgs', 'subscriptionPlan',
+                         'dailySessionsDate', 'dailySessionsCount', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'userId', 'selectedTableBg', 'ownedTableBgs', 'subscriptionPlan',
+                         'dailySessionsDate', 'dailySessionsCount', 'updatedAt'
+                       ]) &&
+                       isValidUserSettings(incoming(), userId);
+
+      allow update: if isOwner(userId) &&
+                       isValidId(settingId) &&
+                       isValidUserSettings(incoming(), userId) &&
+                       incoming().userId == existing().userId &&
+                       incoming().diff(existing()).affectedKeys().hasOnly([
+                         'selectedTableBg', 'ownedTableBgs', 'subscriptionPlan',
+                         'dailySessionsDate', 'dailySessionsCount', 'updatedAt'
+                       ]);
+
+      allow delete: if false;
     }
   }
 }

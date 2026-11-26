@@ -1,14 +1,65 @@
 {
   "firestore": [
     {
-      "database": "ai-studio-android-77a2feaf-a4f1-484d-95f1-db03a0051034",
+      "database": "ai-studio-d3780090-d21d-4f00-8a93-a260e9113314",
       "rules": "firestore.rules"
     }
   ],
+  "hosting": {
+    "public": "dist",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ],
+    "headers": [
+      {
+        "source": "/assets/**",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=31536000, immutable"
+          }
+        ]
+      },
+      {
+        "source": "/index.html",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          }
+        ]
+      },
+      {
+        "source": "**",
+        "headers": [
+          {
+            "key": "X-Content-Type-Options",
+            "value": "nosniff"
+          },
+          {
+            "key": "Referrer-Policy",
+            "value": "strict-origin-when-cross-origin"
+          }
+        ]
+      }
+    ]
+  },
   "emulators": {
     "firestore": {
       "host": "127.0.0.1",
       "port": 8085
+    },
+    "hosting": {
+      "host": "127.0.0.1",
+      "port": 5000
     },
     "ui": {
       "enabled": false

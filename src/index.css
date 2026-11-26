@@ -1,0 +1,71 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Readex Pro", system-ui, -apple-system, sans-serif;
+  --color-royal: #002BFF;
+  --color-royal-dark: #0021CC;
+  --color-shaddaha-yellow: #FFD000;
+  --color-shaddaha-red: #E52521;
+}
+
+@layer base {
+  html,
+  body,
+  button,
+  input,
+  textarea,
+  select {
+    font-family: "Readex Pro", system-ui, -apple-system, sans-serif;
+  }
+
+  body {
+    background-color: #ffffff;
+    color: #111827;
+    overflow-x: hidden;
+  }
+
+  * {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@keyframes cardThrowToCenter {
+  0% {
+    opacity: 0.92;
+    transform: translateY(56px) scale(1.12) rotate(-6deg);
+  }
+  65% {
+    opacity: 1;
+    transform: translateY(-6px) scale(1.02) rotate(2deg);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1) rotate(0deg);
+  }
+}
+
+.animate-card-throw {
+  animation: cardThrowToCenter 0.34s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes bubblePop {
+  0% {
+    opacity: 0;
+    transform: scale(0.75) translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.animate-bubble-pop {
+  animation: bubblePop 0.22s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-card-throw,
+  .animate-bubble-pop {
+    animation: none;
+  }
+}

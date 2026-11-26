@@ -1,8 +1,33 @@
-// Top-level build file where you can add configuration options common to all sub-projects/modules.
-plugins {
-  alias(libs.plugins.android.application) apply false
-  alias(libs.plugins.kotlin.compose) apply false
-  alias(libs.plugins.google.devtools.ksp) apply false
-  alias(libs.plugins.secrets) apply false
-  alias(libs.plugins.google.services) apply false
+import org.gradle.api.tasks.Exec
+
+tasks.register<Exec>("npmLint") {
+    commandLine("npm", "run", "lint")
+}
+
+tasks.register<Exec>("npmBuild") {
+    commandLine("npm", "run", "build")
+}
+
+tasks.register("assembleDebug") {
+    dependsOn("npmBuild")
+}
+
+tasks.register("assembleRelease") {
+    dependsOn("npmBuild")
+}
+
+tasks.register("build") {
+    dependsOn("npmLint", "npmBuild")
+}
+
+tasks.register("lint") {
+    dependsOn("npmLint")
+}
+
+tasks.register("lintDebug") {
+    dependsOn("npmLint")
+}
+
+tasks.register("check") {
+    dependsOn("npmLint")
 }
