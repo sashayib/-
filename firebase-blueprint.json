@@ -1,0 +1,202 @@
+{
+  "entities": {
+    "PlayerProfile": {
+      "title": "PlayerProfile",
+      "description": "Public player profile, Elo ranking, Player ID, and online presence status (zero PII).",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Firebase Auth UID of the player." },
+        "displayName": { "type": "string", "description": "Player display nickname (1-40 chars)." },
+        "avatarUrl": { "type": "string", "description": "Optional profile avatar URL." },
+        "playerCode": { "type": "string", "description": "Shareable alphanumeric Player ID (6-16 chars)." },
+        "presenceStatus": { "type": "string", "enum": ["online", "offline", "in_game"], "description": "Real-time online presence status." },
+        "lastSeenAt": { "type": "string", "format": "date-time", "description": "Server timestamp of last heartbeat." },
+        "visibility": { "type": "string", "enum": ["public"], "description": "Public visibility flag for leaderboard queries." },
+        "rating": { "type": "integer", "description": "Ranking score (0-100000)." },
+        "rankTier": { "type": "string", "description": "Arabic rank tier title." },
+        "wins": { "type": "integer", "description": "Total matches won." },
+        "losses": { "type": "integer", "description": "Total matches lost." },
+        "matchesPlayed": { "type": "integer", "description": "Total matches completed." },
+        "streak": { "type": "integer", "description": "Current consecutive win streak." },
+        "lossStreak": { "type": "integer", "description": "Current consecutive loss streak." },
+        "totalPoints": { "type": "integer", "description": "Cumulative Baloot points scored." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp on creation." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp on update." }
+      },
+      "required": [
+        "userId",
+        "displayName",
+        "visibility",
+        "rating",
+        "rankTier",
+        "wins",
+        "losses",
+        "matchesPlayed",
+        "streak",
+        "totalPoints",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "FriendEntry": {
+      "title": "FriendEntry",
+      "description": "User-scoped friend entry linked to another player by UID and Player ID.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner UID." },
+        "friendUid": { "type": "string", "description": "Friend Firebase Auth UID." },
+        "friendPlayerCode": { "type": "string", "description": "Friend Player ID code." },
+        "friendName": { "type": "string", "description": "Cached display name of the friend." },
+        "friendRating": { "type": "integer", "description": "Cached rating of the friend." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp when friend was added." }
+      },
+      "required": [
+        "userId",
+        "friendUid",
+        "friendPlayerCode",
+        "friendName",
+        "friendRating",
+        "createdAt"
+      ]
+    },
+    "TableInvite": {
+      "title": "TableInvite",
+      "description": "Direct invitation from one player to a friend to join a private Baloot table.",
+      "type": "object",
+      "properties": {
+        "fromUid": { "type": "string" },
+        "fromName": { "type": "string" },
+        "fromPlayerCode": { "type": "string" },
+        "toUid": { "type": "string" },
+        "toName": { "type": "string" },
+        "roomCode": { "type": "string" },
+        "targetScore": { "type": "integer" },
+        "status": { "type": "string", "enum": ["pending", "accepted", "declined", "cancelled"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "fromUid",
+        "fromName",
+        "fromPlayerCode",
+        "toUid",
+        "toName",
+        "roomCode",
+        "targetScore",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "GameRoom": {
+      "title": "GameRoom",
+      "description": "Online multiplayer Baloot table room state synchronized in real time.",
+      "type": "object",
+      "properties": {
+        "roomCode": { "type": "string", "description": "6-character alphanumeric room identifier." },
+        "hostId": { "type": "string", "description": "UID of the room creator." },
+        "roomType": { "type": "string", "enum": ["public", "private"], "description": "Public lobby or invite-code room." },
+        "status": { "type": "string", "enum": ["waiting", "playing", "finished"], "description": "Current room lifecycle state." },
+        "targetScore": { "type": "integer", "description": "Target match points (152)." },
+        "memberUids": { "type": "array", "description": "Human UIDs currently seated in the room (max 4)." },
+        "seat0Uid": { "type": "string" },
+        "seat1Uid": { "type": "string" },
+        "seat2Uid": { "type": "string" },
+        "seat3Uid": { "type": "string" },
+        "seat0Name": { "type": "string" },
+        "seat1Name": { "type": "string" },
+        "seat2Name": { "type": "string" },
+        "seat3Name": { "type": "string" },
+        "seat0Rating": { "type": "integer" },
+        "seat1Rating": { "type": "integer" },
+        "seat2Rating": { "type": "integer" },
+        "seat3Rating": { "type": "integer" },
+        "usScore": { "type": "integer" },
+        "themScore": { "type": "integer" },
+        "roundNumber": { "type": "integer" },
+        "turnIndex": { "type": "integer" },
+        "dealerIndex": { "type": "integer" },
+        "gamePhase": { "type": "string" },
+        "gameMode": { "type": "string" },
+        "trumpSuit": { "type": "string" },
+        "bidderIndex": { "type": "integer" },
+        "bidLevel": { "type": "integer" },
+        "openCard": { "type": "string" },
+        "hands": { "type": "object" },
+        "tableCards": { "type": "array" },
+        "lastTrickCards": { "type": "array" },
+        "lastTrickWinner": { "type": "integer" },
+        "usTricksCount": { "type": "integer" },
+        "themTricksCount": { "type": "integer" },
+        "usRoundPoints": { "type": "integer" },
+        "themRoundPoints": { "type": "integer" },
+        "usProjects": { "type": "array" },
+        "themProjects": { "type": "array" },
+        "winnerTeam": { "type": "integer" },
+        "lastActionText": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "roomCode", "hostId", "roomType", "status", "targetScore", "memberUids",
+        "seat0Uid", "seat1Uid", "seat2Uid", "seat3Uid",
+        "seat0Name", "seat1Name", "seat2Name", "seat3Name",
+        "seat0Rating", "seat1Rating", "seat2Rating", "seat3Rating",
+        "usScore", "themScore", "roundNumber", "turnIndex", "dealerIndex",
+        "gamePhase", "gameMode", "trumpSuit", "bidderIndex", "bidLevel",
+        "openCard", "hands", "tableCards", "lastTrickCards", "lastTrickWinner",
+        "usTricksCount", "themTricksCount", "usRoundPoints", "themRoundPoints",
+        "usProjects", "themProjects", "winnerTeam", "lastActionText",
+        "createdAt", "updatedAt"
+      ]
+    },
+    "MatchRecord": {
+      "title": "MatchRecord",
+      "description": "Immutable completed Baloot match history entry scoped to the user.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "roomCode": { "type": "string" },
+        "mode": { "type": "string", "enum": ["online", "solo"] },
+        "usScore": { "type": "integer" },
+        "themScore": { "type": "integer" },
+        "didWin": { "type": "boolean" },
+        "ratingDelta": { "type": "integer" },
+        "opponentSummary": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId",
+        "mode",
+        "usScore",
+        "themScore",
+        "didWin",
+        "ratingDelta",
+        "opponentSummary",
+        "createdAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/players/{userId}": {
+      "schema": { "$ref": "#/entities/PlayerProfile" },
+      "description": "Public player profiles, Player IDs, presence status, and rankings."
+    },
+    "/rooms/{roomId}": {
+      "schema": { "$ref": "#/entities/GameRoom" },
+      "description": "Active and waiting online Baloot multiplayer tables keyed by 6-char roomCode."
+    },
+    "/invites/{inviteId}": {
+      "schema": { "$ref": "#/entities/TableInvite" },
+      "description": "Direct real-time table invitations between friends."
+    },
+    "/users/{userId}/friends/{friendUid}": {
+      "schema": { "$ref": "#/entities/FriendEntry" },
+      "description": "User-scoped friends list entries."
+    },
+    "/users/{userId}/matches/{matchId}": {
+      "schema": { "$ref": "#/entities/MatchRecord" },
+      "description": "User-scoped immutable match history records."
+    }
+  }
+}

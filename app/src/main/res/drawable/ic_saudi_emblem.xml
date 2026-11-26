@@ -1,0 +1,74 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="160dp"
+    android:height="160dp"
+    android:viewportWidth="160"
+    android:viewportHeight="160">
+
+    <!-- Palm Tree Trunk (tapered, seated cleanly above crossed scimitars) -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M76.5,50 L83.5,50 L85.2,89 L86.8,95 L73.2,95 L74.8,89 Z" />
+
+    <!-- Crown Center Vertical Frond -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M80,49 C77.6,36 77.9,22 80,12 C82.1,22 82.4,36 80,49 Z" />
+
+    <!-- Left Fronds (6 graceful arched fronds fanning outward & drooping) -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M78.6,48 C74.5,35 70.2,23 64.5,15.5 C67.6,23.5 71.2,34.5 75.5,48.5 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M77.4,49 C70.5,36 62.5,26.5 52.5,22.5 C60.2,29 67.2,38 74.2,50 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M76.2,50.5 C66.5,39.5 55.2,33.5 44,33.5 C53.8,37.8 63.5,44 73.2,52 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M75.5,52.5 C63.5,44.5 50.5,43 39.5,47.5 C50.5,48.2 61.5,50.8 73,54.8 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M75.2,55 C62.5,51.5 49.5,54.5 41.5,63.5 C51.5,59.5 62.5,58 73.5,58.2 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M75.5,58.2 C65,59 55.5,65 51,75 C59,68.5 67,64.2 74.8,61.5 Z" />
+
+    <!-- Right Fronds (Exact Mirror around x = 80) -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M81.4,48 C85.5,35 89.8,23 95.5,15.5 C92.4,23.5 88.8,34.5 84.5,48.5 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M82.6,49 C89.5,36 97.5,26.5 107.5,22.5 C99.8,29 92.8,38 85.8,50 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M83.8,50.5 C93.5,39.5 104.8,33.5 116,33.5 C106.2,37.8 96.5,44 86.8,52 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M84.5,52.5 C96.5,44.5 109.5,43 120.5,47.5 C109.5,48.2 98.5,50.8 87,54.8 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M84.8,55 C97.5,51.5 110.5,54.5 118.5,63.5 C108.5,59.5 97.5,58 86.5,58.2 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M84.5,58.2 C95,59 104.5,65 109,75 C101,68.5 93,64.2 85.2,61.5 Z" />
+
+    <!-- Saber 1: Bottom-Left Hilt sweeping up-right in a graceful Arabian scimitar arch to Far-Right Tip -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M53.5,116.5 C68,107 88,97.5 112,93.5 C126,91.2 138.5,91.5 148,93.8 C137,96.8 124.5,99.5 111.5,102.5 C90,107.5 72,115.5 57.5,123 Z" />
+    <!-- Saber 1 Crossguard & Curved Arabian Hilt (Bottom-Left) -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M48.5,112 L52,109.5 L61.5,125 L58,127.5 L54.5,122 L44.5,128.5 C40.2,131 35.8,128.5 36.2,124 C36.6,120.5 40.5,119.5 42.6,121.6 C41.5,123.5 43.2,125.2 45.2,123.8 L51.5,118.8 Z" />
+
+    <!-- Saber 2: Bottom-Right Hilt sweeping up-left (Exact Mirror around x = 80) -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M106.5,116.5 C92,107 72,97.5 48,93.5 C34,91.2 21.5,91.5 12,93.8 C23,96.8 35.5,99.5 48.5,102.5 C70,107.5 88,115.5 102.5,123 Z" />
+    <!-- Saber 2 Crossguard & Curved Arabian Hilt (Bottom-Right) -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M111.5,112 L108,109.5 L98.5,125 L102,127.5 L105.5,122 L115.5,128.5 C119.8,131 124.2,128.5 123.8,124 C123.4,120.5 119.5,119.5 117.4,121.6 C118.5,123.5 116.8,125.2 114.8,123.8 L108.5,118.8 Z" />
+</vector>

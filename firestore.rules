@@ -1,0 +1,418 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net: Default-deny all unhandled paths
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Shared Primitives ---
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // --- Validation Helpers ---
+    function isValidPlayer(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 40 &&
+             (!('avatarUrl' in data) || data.avatarUrl == null || (data.avatarUrl is string && data.avatarUrl.size() <= 500)) &&
+             (!('playerCode' in data) || (data.playerCode is string && data.playerCode.size() >= 6 && data.playerCode.size() <= 16 && data.playerCode.matches('^[A-Z0-9]+$'))) &&
+             (!('presenceStatus' in data) || data.presenceStatus in ['online', 'offline', 'in_game']) &&
+             (!('lastSeenAt' in data) || (data.lastSeenAt is timestamp && data.lastSeenAt <= request.time)) &&
+             data.visibility == 'public' &&
+             data.rating is int && data.rating >= 0 && data.rating <= 100000 &&
+             data.rankTier is string && data.rankTier.size() >= 1 && data.rankTier.size() <= 30 &&
+             data.wins is int && data.wins >= 0 && data.wins <= 100000 &&
+             data.losses is int && data.losses >= 0 && data.losses <= 100000 &&
+             data.matchesPlayed is int && data.matchesPlayed >= 0 && data.matchesPlayed <= 200000 &&
+             data.streak is int && data.streak >= 0 && data.streak <= 10000 &&
+             (!('lossStreak' in data) || (data.lossStreak is int && data.lossStreak >= 0 && data.lossStreak <= 10000)) &&
+             data.totalPoints is int && data.totalPoints >= 0 && data.totalPoints <= 100000000 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidFriend(data, ownerUid, friendUid) {
+      return data.userId is string && data.userId == ownerUid &&
+             data.friendUid is string && data.friendUid == friendUid && data.friendUid != ownerUid &&
+             isValidId(data.friendUid) &&
+             data.friendPlayerCode is string && data.friendPlayerCode.size() >= 1 && data.friendPlayerCode.size() <= 16 &&
+             data.friendName is string && data.friendName.size() >= 1 && data.friendName.size() <= 40 &&
+             data.friendRating is int && data.friendRating >= 0 && data.friendRating <= 100000 &&
+             data.createdAt is timestamp && data.createdAt <= request.time;
+    }
+
+    function isValidInvite(data) {
+      return data.fromUid is string && isValidId(data.fromUid) &&
+             data.fromName is string && data.fromName.size() >= 1 && data.fromName.size() <= 40 &&
+             data.fromPlayerCode is string && data.fromPlayerCode.size() >= 1 && data.fromPlayerCode.size() <= 16 &&
+             data.toUid is string && isValidId(data.toUid) && data.toUid != data.fromUid &&
+             data.toName is string && data.toName.size() >= 1 && data.toName.size() <= 40 &&
+             data.roomCode is string && data.roomCode.size() == 6 && data.roomCode.matches('^[A-Z0-9]{6}$') &&
+             data.targetScore == 152 &&
+             data.status in ['pending', 'accepted', 'declined', 'cancelled'] &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidRoomMeta(data) {
+      return data.roomCode is string && data.roomCode.size() == 6 && data.roomCode.matches('^[A-Z0-9]{6}$') &&
+             data.hostId is string && data.hostId.size() >= 1 && data.hostId.size() <= 128 &&
+             data.roomType in ['public', 'private'] &&
+             data.status in ['waiting', 'playing', 'finished'] &&
+             data.targetScore == 152 &&
+             data.memberUids is list && data.memberUids.size() >= 1 && data.memberUids.size() <= 4 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidRoomSeats(data) {
+      return data.seat0Uid is string && data.seat0Uid.size() <= 128 &&
+             data.seat1Uid is string && data.seat1Uid.size() <= 128 &&
+             data.seat2Uid is string && data.seat2Uid.size() <= 128 &&
+             data.seat3Uid is string && data.seat3Uid.size() <= 128 &&
+             data.seat0Name is string && data.seat0Name.size() <= 40 &&
+             data.seat1Name is string && data.seat1Name.size() <= 40 &&
+             data.seat2Name is string && data.seat2Name.size() <= 40 &&
+             data.seat3Name is string && data.seat3Name.size() <= 40 &&
+             data.seat0Rating is int && data.seat0Rating >= 0 && data.seat0Rating <= 100000 &&
+             data.seat1Rating is int && data.seat1Rating >= 0 && data.seat1Rating <= 100000 &&
+             data.seat2Rating is int && data.seat2Rating >= 0 && data.seat2Rating <= 100000 &&
+             data.seat3Rating is int && data.seat3Rating >= 0 && data.seat3Rating <= 100000;
+    }
+
+    function isValidRoomGame(data) {
+      return data.usScore is int && data.usScore >= 0 && data.usScore <= 500 &&
+             data.themScore is int && data.themScore >= 0 && data.themScore <= 500 &&
+             data.roundNumber is int && data.roundNumber >= 0 && data.roundNumber <= 200 &&
+             data.turnIndex is int && data.turnIndex >= 0 && data.turnIndex <= 3 &&
+             data.dealerIndex is int && data.dealerIndex >= 0 && data.dealerIndex <= 3 &&
+             data.gamePhase in ['lobby', 'bidding_r1', 'bidding_r2', 'doubling', 'playing', 'round_summary', 'match_finished'] &&
+             data.gameMode in ['none', 'sun', 'hokm'] &&
+             data.trumpSuit in ['none', 'spades', 'hearts', 'diamonds', 'clubs'] &&
+             data.bidderIndex is int && data.bidderIndex >= -1 && data.bidderIndex <= 3 &&
+             data.bidLevel is int && data.bidLevel >= 1 && data.bidLevel <= 4 &&
+             data.openCard is string && data.openCard.size() <= 10 &&
+             data.hands is map && data.hands.keys().hasOnly(['0', '1', '2', '3']) &&
+             data.tableCards is list && data.tableCards.size() <= 4 &&
+             data.lastTrickCards is list && data.lastTrickCards.size() <= 4 &&
+             data.lastTrickWinner is int && data.lastTrickWinner >= -1 && data.lastTrickWinner <= 3 &&
+             data.usTricksCount is int && data.usTricksCount >= 0 && data.usTricksCount <= 8 &&
+             data.themTricksCount is int && data.themTricksCount >= 0 && data.themTricksCount <= 8 &&
+             data.usRoundPoints is int && data.usRoundPoints >= 0 && data.usRoundPoints <= 300 &&
+             data.themRoundPoints is int && data.themRoundPoints >= 0 && data.themRoundPoints <= 300 &&
+             data.usProjects is list && data.usProjects.size() <= 8 &&
+             data.themProjects is list && data.themProjects.size() <= 8 &&
+             data.winnerTeam is int && data.winnerTeam >= -1 && data.winnerTeam <= 1 &&
+             data.lastActionText is string && data.lastActionText.size() <= 140;
+    }
+
+    function isValidRoom(data) {
+      return isValidRoomMeta(data) && isValidRoomSeats(data) && isValidRoomGame(data);
+    }
+
+    function isValidMatchHistory(data) {
+      return data.userId is string && data.userId == request.auth.uid && data.userId.size() <= 128 &&
+             (!('roomCode' in data) || data.roomCode == null || (data.roomCode is string && data.roomCode.size() <= 16)) &&
+             data.mode in ['online', 'solo'] &&
+             data.usScore is int && data.usScore >= 0 && data.usScore <= 500 &&
+             data.themScore is int && data.themScore >= 0 && data.themScore <= 500 &&
+             data.didWin is bool &&
+             data.ratingDelta is int && data.ratingDelta >= -500 && data.ratingDelta <= 80 &&
+             data.opponentSummary is string && data.opponentSummary.size() <= 120 &&
+             data.createdAt is timestamp && data.createdAt <= request.time;
+    }
+
+    // --- Collection: players/{userId} ---
+    match /players/{userId} {
+      allow get: if isSignedIn() && isValidId(userId);
+      allow list: if isSignedIn() && existing().visibility == 'public';
+
+      allow create: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().keys().hasAll([
+                         'userId', 'displayName', 'visibility', 'rating', 'rankTier',
+                         'wins', 'losses', 'matchesPlayed', 'streak', 'totalPoints',
+                         'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'userId', 'displayName', 'avatarUrl', 'playerCode',
+                         'presenceStatus', 'lastSeenAt', 'visibility', 'rating', 'rankTier',
+                         'wins', 'losses', 'matchesPlayed', 'streak', 'lossStreak', 'totalPoints',
+                         'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().rating == 22 &&
+                       incoming().wins == 0 &&
+                       incoming().losses == 0 &&
+                       incoming().matchesPlayed == 0 &&
+                       isValidPlayer(incoming());
+
+      allow update: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       isValidPlayer(incoming()) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().visibility == existing().visibility &&
+                       (
+                         // Action 1: Edit profile display name / avatar
+                         incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'avatarUrl', 'updatedAt']) ||
+                         // Action 2: Record completed match stats & bounded rating change
+                         (
+                           incoming().diff(existing()).affectedKeys().hasOnly([
+                             'rating', 'rankTier', 'wins', 'losses', 'matchesPlayed',
+                             'streak', 'lossStreak', 'totalPoints', 'updatedAt'
+                           ]) &&
+                           incoming().matchesPlayed == existing().matchesPlayed + 1 &&
+                           incoming().rating >= existing().rating - 500 &&
+                           incoming().rating <= existing().rating + 80
+                         ) ||
+                         // Action 3: Migrate fresh 0-match legacy 1200 profile to starting 22 rating
+                         (
+                           existing().matchesPlayed == 0 &&
+                           existing().rating == 1200 &&
+                           incoming().rating == 22 &&
+                           incoming().diff(existing()).affectedKeys().hasOnly(['rating', 'rankTier', 'updatedAt'])
+                         ) ||
+                         // Action 4: Presence heartbeat & one-time playerCode backfill
+                         (
+                           incoming().diff(existing()).affectedKeys().hasOnly([
+                             'presenceStatus', 'lastSeenAt', 'playerCode', 'updatedAt'
+                           ]) &&
+                           (!('playerCode' in existing()) || incoming().playerCode == existing().playerCode)
+                         )
+                       );
+
+      allow delete: if isOwner(userId) && isValidId(userId);
+    }
+
+    // --- Collection: rooms/{roomId} ---
+    match /rooms/{roomId} {
+      allow get: if isSignedIn() &&
+                    isValidId(roomId) &&
+                    (existing().status == 'waiting' || existing().roomType == 'public' || request.auth.uid in existing().memberUids);
+
+      allow list: if isSignedIn() &&
+                     (existing().roomType == 'public' || request.auth.uid in existing().memberUids);
+
+      allow create: if isSignedIn() &&
+                       isValidId(roomId) &&
+                       roomId == incoming().roomCode &&
+                       incoming().hostId == request.auth.uid &&
+                       incoming().status == 'waiting' &&
+                       incoming().memberUids.size() == 1 &&
+                       request.auth.uid in incoming().memberUids &&
+                       incoming().keys().hasAll([
+                         'roomCode', 'hostId', 'roomType', 'status', 'targetScore', 'memberUids',
+                         'seat0Uid', 'seat1Uid', 'seat2Uid', 'seat3Uid',
+                         'seat0Name', 'seat1Name', 'seat2Name', 'seat3Name',
+                         'seat0Rating', 'seat1Rating', 'seat2Rating', 'seat3Rating',
+                         'usScore', 'themScore', 'roundNumber', 'turnIndex', 'dealerIndex',
+                         'gamePhase', 'gameMode', 'trumpSuit', 'bidderIndex', 'bidLevel',
+                         'openCard', 'hands', 'tableCards', 'lastTrickCards', 'lastTrickWinner',
+                         'usTricksCount', 'themTricksCount', 'usRoundPoints', 'themRoundPoints',
+                         'usProjects', 'themProjects', 'winnerTeam', 'lastActionText',
+                         'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'roomCode', 'hostId', 'roomType', 'status', 'targetScore', 'memberUids',
+                         'seat0Uid', 'seat1Uid', 'seat2Uid', 'seat3Uid',
+                         'seat0Name', 'seat1Name', 'seat2Name', 'seat3Name',
+                         'seat0Rating', 'seat1Rating', 'seat2Rating', 'seat3Rating',
+                         'usScore', 'themScore', 'roundNumber', 'turnIndex', 'dealerIndex',
+                         'gamePhase', 'gameMode', 'trumpSuit', 'bidderIndex', 'bidLevel',
+                         'openCard', 'hands', 'tableCards', 'lastTrickCards', 'lastTrickWinner',
+                         'usTricksCount', 'themTricksCount', 'usRoundPoints', 'themRoundPoints',
+                         'usProjects', 'themProjects', 'winnerTeam', 'lastActionText',
+                         'createdAt', 'updatedAt'
+                       ]) &&
+                       isValidRoom(incoming());
+
+      allow update: if isSignedIn() &&
+                       isValidId(roomId) &&
+                       isValidRoom(incoming()) &&
+                       existing().status != 'finished' &&
+                       incoming().hostId == existing().hostId &&
+                       incoming().roomCode == existing().roomCode &&
+                       incoming().roomType == existing().roomType &&
+                       incoming().targetScore == existing().targetScore &&
+                       incoming().createdAt == existing().createdAt &&
+                       (
+                         // Action 1: Join waiting room
+                         (
+                           existing().status == 'waiting' &&
+                           !(request.auth.uid in existing().memberUids) &&
+                           request.auth.uid in incoming().memberUids &&
+                           incoming().memberUids.size() == existing().memberUids.size() + 1 &&
+                           incoming().status == 'waiting' &&
+                           incoming().diff(existing()).affectedKeys().hasOnly([
+                             'memberUids', 'seat0Uid', 'seat1Uid', 'seat2Uid', 'seat3Uid',
+                             'seat0Name', 'seat1Name', 'seat2Name', 'seat3Name',
+                             'seat0Rating', 'seat1Rating', 'seat2Rating', 'seat3Rating',
+                             'lastActionText', 'updatedAt'
+                           ])
+                         ) ||
+                         // Action 2: Leave waiting room
+                         (
+                           existing().status == 'waiting' &&
+                           request.auth.uid in existing().memberUids &&
+                           !(request.auth.uid in incoming().memberUids) &&
+                           incoming().memberUids.size() >= 1 &&
+                           incoming().status == 'waiting' &&
+                           incoming().diff(existing()).affectedKeys().hasOnly([
+                             'memberUids', 'seat0Uid', 'seat1Uid', 'seat2Uid', 'seat3Uid',
+                             'seat0Name', 'seat1Name', 'seat2Name', 'seat3Name',
+                             'seat0Rating', 'seat1Rating', 'seat2Rating', 'seat3Rating',
+                             'lastActionText', 'updatedAt'
+                           ])
+                         ) ||
+                         // Action 3: Start match, bid, play card, or complete round/match (members only)
+                         (
+                           request.auth.uid in existing().memberUids &&
+                           incoming().diff(existing()).affectedKeys().hasOnly([
+                             'status', 'seat0Uid', 'seat1Uid', 'seat2Uid', 'seat3Uid',
+                             'seat0Name', 'seat1Name', 'seat2Name', 'seat3Name',
+                             'seat0Rating', 'seat1Rating', 'seat2Rating', 'seat3Rating',
+                             'usScore', 'themScore', 'roundNumber', 'turnIndex', 'dealerIndex',
+                             'gamePhase', 'gameMode', 'trumpSuit', 'bidderIndex', 'bidLevel',
+                             'openCard', 'hands', 'tableCards', 'lastTrickCards', 'lastTrickWinner',
+                             'usTricksCount', 'themTricksCount', 'usRoundPoints', 'themRoundPoints',
+                             'usProjects', 'themProjects', 'winnerTeam', 'lastActionText', 'updatedAt'
+                           ])
+                         )
+                       );
+
+      allow delete: if isSignedIn() &&
+                       isValidId(roomId) &&
+                       existing().hostId == request.auth.uid &&
+                       existing().status == 'waiting';
+
+      // --- Subcollection: rooms/{roomId}/messages/{messageId} ---
+      match /messages/{messageId} {
+        allow get, list: if isSignedIn() &&
+                            isValidId(roomId) &&
+                            request.auth.uid in get(/databases/$(database)/documents/rooms/$(roomId)).data.memberUids;
+
+        allow create: if isSignedIn() &&
+                         isValidId(roomId) &&
+                         isValidId(messageId) &&
+                         request.auth.uid in get(/databases/$(database)/documents/rooms/$(roomId)).data.memberUids &&
+                         incoming().keys().hasAll(['senderUid', 'senderName', 'seatIndex', 'text', 'createdAt']) &&
+                         incoming().keys().hasOnly(['senderUid', 'senderName', 'seatIndex', 'text', 'createdAt']) &&
+                         incoming().senderUid == request.auth.uid &&
+                         incoming().senderName is string && incoming().senderName.size() >= 1 && incoming().senderName.size() <= 40 &&
+                         incoming().seatIndex is int && incoming().seatIndex >= 0 && incoming().seatIndex <= 3 &&
+                         incoming().text is string && incoming().text.size() >= 1 && incoming().text.size() <= 200 &&
+                         incoming().createdAt is timestamp && incoming().createdAt <= request.time;
+
+        allow update, delete: if false;
+      }
+    }
+
+    // --- Collection: invites/{inviteId} ---
+    match /invites/{inviteId} {
+      allow get: if isSignedIn() &&
+                    isValidId(inviteId) &&
+                    (request.auth.uid == existing().fromUid || request.auth.uid == existing().toUid);
+
+      allow list: if isSignedIn() &&
+                     (request.auth.uid == existing().toUid || request.auth.uid == existing().fromUid);
+
+      allow create: if isSignedIn() &&
+                       isValidId(inviteId) &&
+                       incoming().fromUid == request.auth.uid &&
+                       incoming().status == 'pending' &&
+                       incoming().keys().hasAll([
+                         'fromUid', 'fromName', 'fromPlayerCode',
+                         'toUid', 'toName', 'roomCode', 'targetScore',
+                         'status', 'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'fromUid', 'fromName', 'fromPlayerCode',
+                         'toUid', 'toName', 'roomCode', 'targetScore',
+                         'status', 'createdAt', 'updatedAt'
+                       ]) &&
+                       isValidInvite(incoming());
+
+      allow update: if isSignedIn() &&
+                       isValidId(inviteId) &&
+                       isValidInvite(incoming()) &&
+                       existing().status == 'pending' &&
+                       incoming().fromUid == existing().fromUid &&
+                       incoming().fromName == existing().fromName &&
+                       incoming().fromPlayerCode == existing().fromPlayerCode &&
+                       incoming().toUid == existing().toUid &&
+                       incoming().toName == existing().toName &&
+                       incoming().roomCode == existing().roomCode &&
+                       incoming().targetScore == existing().targetScore &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']) &&
+                       (
+                         (request.auth.uid == existing().toUid && incoming().status in ['accepted', 'declined']) ||
+                         (request.auth.uid == existing().fromUid && incoming().status == 'cancelled')
+                       );
+
+      allow delete: if isSignedIn() &&
+                       isValidId(inviteId) &&
+                       (request.auth.uid == existing().fromUid || request.auth.uid == existing().toUid);
+    }
+
+    // --- Collection: users/{userId}/friends/{friendUid} ---
+    match /users/{userId}/friends/{friendUid} {
+      allow get: if isOwner(userId) && isValidId(friendUid);
+      allow list: if isOwner(userId);
+
+      allow create: if isOwner(userId) &&
+                       isValidId(friendUid) &&
+                       incoming().keys().hasAll([
+                         'userId', 'friendUid', 'friendPlayerCode', 'friendName', 'friendRating', 'createdAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'userId', 'friendUid', 'friendPlayerCode', 'friendName', 'friendRating', 'createdAt'
+                       ]) &&
+                       isValidFriend(incoming(), userId, friendUid);
+
+      allow update: if false;
+
+      allow delete: if isOwner(userId) && isValidId(friendUid);
+    }
+
+    // --- Collection: users/{userId}/matches/{matchId} ---
+    match /users/{userId}/matches/{matchId} {
+      allow get: if isOwner(userId) && isValidId(matchId);
+      allow list: if isOwner(userId);
+
+      allow create: if isOwner(userId) &&
+                       isValidId(matchId) &&
+                       incoming().keys().hasAll([
+                         'userId', 'mode', 'usScore', 'themScore',
+                         'didWin', 'ratingDelta', 'opponentSummary', 'createdAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'userId', 'roomCode', 'mode', 'usScore', 'themScore',
+                         'didWin', 'ratingDelta', 'opponentSummary', 'createdAt'
+                       ]) &&
+                       isValidMatchHistory(incoming());
+
+      allow update, delete: if false;
+    }
+  }
+}
